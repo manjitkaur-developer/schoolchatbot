@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #eef2ff;
+        }
+        .chat-container {
+            height: calc(100vh - 120px);
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .chat-container::-webkit-scrollbar {
+            display: none;
+        }
+        .user-message {
+            background-color: #4f46e5;
+            color: white;
+            border-radius: 1.5rem;
+            border-bottom-right-radius: 0;
+            padding: 0.75rem 1rem;
+        }
+        .bot-message {
+            background-color: #fff;
+            color: #374151;
+            border-radius: 1.5rem;
+            border-bottom-left-radius: 0;
+            padding: 0.75rem 1rem;
+        }
+        .message-input-form {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div class="bg-indigo-50 p-6 rounded-3xl shadow-2xl max-w-lg w-full h-[80vh] flex flex-col relative overflow-hidden">
+        <!-- Chat Header -->
+        <div class="flex items-center p-4 bg-indigo-500 text-white rounded-t-3xl shadow-md">
+            <i class="fas fa-robot text-2xl mr-4"></i>
+            <h1 class="text-xl font-bold">Helpful Bot</h1>
+        </div>
+
+        <!-- Chat Messages Container -->
+        <div id="chat-messages" class="chat-container p-4 space-y-4">
+            <!-- Initial welcome message from bot -->
+            <div class="flex justify-start">
+                <div class="bot-message max-w-[85%] shadow-lg">
+                    Hello! I'm here to help with questions about our school. What would you like to know?
+                </div>
+            </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div id="typing-indicator" class="flex items-center space-x-2 p-4 text-gray-500 hidden">
+            <i class="fas fa-circle-notch fa-spin"></i>
+            <span>Typing...</span>
+        </div>
+
+        <!-- Message Input Form -->
+        <form id="message-form" class="p-4 bg-white rounded-b-3xl shadow-inner mt-auto flex items-center">
+            <input type="text" id="message-input" placeholder="Type your message..." class="flex-1 p-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button type="submit" class="ml-2 bg-indigo-500 text-white p-3 rounded-full hover:bg-indigo-600 transition-colors duration-200">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatMessages = document.getElementById('chat-messages');
+            const messageForm = document.getElementById('message-form');
+            const messageInput = document.getElementById('message-input');
+            const typingIndicator = document.getElementById('typing-indicator');
+            
+            // NOTE: The school information is now stored directly in this JavaScript variable.
+            // You can edit this JSON object to update or add new school data.
+            const schoolData = [
+                {
+                    "topic": "Office Hours",
+                    "keywords": ["office hours", "open", "contact", "call", "in person", "administration", "what time", "school hours"],
+                    "info": "The school office is open from 8:00 AM to 4:00 PM, Monday through Friday. For any inquiries outside of these hours, please leave a message or send an email."
+                },
+                {
+                    "topic": "School Calendar",
+                    "keywords": ["calendar", "dates", "holidays", "break", "vacation", "start", "end", "school closed", "when is"],
+                    "info": "The upcoming school holidays are: Diwali Break from October 28 to November 1, and Winter Break from December 22 to January 5."
+                },
+                {
+                    "topic": "Uniform Policy",
+                    "keywords": ["uniform", "dress code", "dress", "clothing", "rules", "policy", "what to wear"],
+                    "info": "The school uniform consists of a white polo shirt, navy blue trousers or skirt, and black shoes. Uniforms can be purchased at the school's on-site store."
+                },
+                {
+                    "topic": "Parent-Teacher Meetings",
+                    "keywords": ["parent teacher", "meeting", "conference", "PTM", "schedule", "when are"],
+                    "info": "The next Parent-Teacher Meeting is scheduled for November 15. Please sign up for a time slot through the school's online portal."
+                },
+                {
+                    "topic": "Admission Process",
+                    "keywords": ["admissions", "enrollment", "apply", "new student", "process", "admission", "enroll"],
+                    "info": "For information on admissions, please visit our website and fill out the inquiry form. The admissions team will contact you to schedule a school tour."
+                },
+                {
+                    "topic": "Syllabus",
+                    "keywords": ["syllabus", "curriculum", "what will we study", "subjects"],
+                    "info": {
+                        "grade 1": "Grade 1 Syllabus: English (Phonics, Reading), Math (Numbers 1-100), Science (Plants, Animals), and Social Studies (My Community).",
+                        "grade 2": "Grade 2 Syllabus: English (Sentence Structure), Math (Addition & Subtraction), Science (Ecosystems), and Social Studies (Local History).",
+                        "grade 3": "Grade 3 Syllabus: English (Paragraphs), Math (Multiplication & Division), Science (Matter), and Social Studies (World Geography).",
+                        "grade 4": "Grade 4 Syllabus: English (Grammar), Math (Fractions), Science (Physics), and Social Studies (History of India).",
+                        "grade 5": "Grade 5 Syllabus: English (Literary Analysis), Math (Decimals), Science (Chemistry), and Social Studies (World Cultures)."
+                    }
+                }
+            ];
+
+            // New conversational data for non-school-related queries
+            const conversationalData = [
+                {
+                    "keywords": ["hi", "hello", "hey", "greetings"],
+                    "response": "Hello there! How can I help you today?"
+                },
+                {
+                    "keywords": ["how are you", "how are you doing", "how r u"],
+                    "response": "I'm doing great, thank you for asking! How can I help with a question about the school?"
+                },
+                {
+                    "keywords": ["what can you do", "what are you", "who are you"],
+                    "response": "I'm a chatbot designed to provide information about our school. Just ask me a question about our policies, calendar, or office hours!"
+                },
+                {
+                    "keywords": ["weather"],
+                    "response": "I can't check the weather, but you can find a reliable forecast on your local weather app!"
+                }
+            ];
+            
+            // Function to add a message to the chat UI
+            function addMessageToChat(sender, message) {
+                const messageElement = document.createElement('div');
+                const messageBubble = document.createElement('div');
+                messageBubble.textContent = message;
+
+                if (sender === 'user') {
+                    messageElement.className = 'flex justify-end';
+                    messageBubble.className = 'user-message max-w-[85%] shadow-lg';
+                } else {
+                    messageElement.className = 'flex justify-start';
+                    messageBubble.className = 'bot-message max-w-[85%] shadow-lg';
+                }
+
+                messageElement.appendChild(messageBubble);
+                chatMessages.appendChild(messageElement);
+                scrollToBottom();
+            }
+
+            // Function to scroll the chat window to the bottom
+            function scrollToBottom() {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            // Function to get the bot's response based on the user's query
+            function getBotResponse(userMessage) {
+                const normalizedQuery = userMessage.toLowerCase();
+                
+                // First, check for a match in the school data
+                for (const item of schoolData) {
+                    for (const keyword of item.keywords) {
+                        if (normalizedQuery.includes(keyword)) {
+                            // Special handling for the Syllabus topic
+                            if (item.topic === "Syllabus") {
+                                const gradeMatches = normalizedQuery.match(/grade (\d)|grade (\d+)|(\d+)(st|nd|rd|th|th)/);
+                                if (gradeMatches) {
+                                    const grade = gradeMatches[1] || gradeMatches[2] || gradeMatches[3];
+                                    return item.info[`grade ${grade}`] || "I don't have the syllabus for that grade. Please contact the school office.";
+                                }
+                                return "Please specify the grade you need the syllabus for (e.g., 'syllabus for grade 1').";
+                            }
+                            // General case for other topics
+                            return item.info;
+                        }
+                    }
+                }
+                
+                // If no school-related match, check for a conversational match
+                for (const item of conversationalData) {
+                    for (const keyword of item.keywords) {
+                        if (normalizedQuery.includes(keyword)) {
+                            return item.response;
+                        }
+                    }
+                }
+                
+                // Fallback message if no relevant information is found
+                return "Sorry, I don't have information about this. Please contact the school office.";
+            }
+
+            // Function to handle sending a message
+            function sendMessage(e) {
+                e.preventDefault();
+                const userMessage = messageInput.value.trim();
+                if (userMessage === '') return;
+
+                addMessageToChat('user', userMessage);
+                messageInput.value = '';
+                
+                typingIndicator.classList.remove('hidden');
+                scrollToBottom();
+
+                // Get the response and add it to the chat
+                const botResponse = getBotResponse(userMessage);
+                addMessageToChat('bot', botResponse);
+                
+                typingIndicator.classList.add('hidden');
+                scrollToBottom();
+            }
+            
+            messageForm.addEventListener('submit', sendMessage);
+        });
+    </script>
+</body>
+</html>
